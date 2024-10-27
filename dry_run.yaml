@@ -1,0 +1,171 @@
+MANIFEST:
+---
+kind: Deployment
+metadata:
+  name: my-app-deployment
+  labels:
+    app: my-app
+spec:
+  replicas: "serviceFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDSSSSSSSSSSl;kserviceFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDSSSSSSSSSS09iserviceFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDSSSSSSSSSS098serviceFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDSSSSSSSSSSkjhserviceFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD DDDDD DDDDDDDDD DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDSSSSSSS SSS"
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+        - name: my-app-container
+          image: my-app:latests
+          ports:
+            - containerPort: 80
+            - containerPort: 443
+          env:
+            - name: ENV_VAR_1
+              value: "value1"
+            - name: ENV_VAR_2
+              value: "value2"
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/configdf
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "250m"
+            limits:
+              memory: "128Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 80
+            initialDelaySeconds: 2
+            periodSeconds: 3
+        - name: sidecar-container
+          image: sidecar-app:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SIDE_ENV_VAR_1
+              value: "side_value1"
+          volumeMounts:
+            - name: sidecar-volume
+              mountPath: /etc/sidecar
+      initContainers:
+        - name: init-myservice
+          image: busybox
+          command: ['sh', '-c', 'echo Tp is starting!']
+      volumes:
+        - name: config-volume
+          configMap:
+            name: app-config
+        - name: sidecar-volume
+          emptyDir: {protocol: HTTP, name: sidecar-volume}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-app-service
+  labels:
+    app: my-app
+spec:
+  selector:
+    app: my-app
+  ports:
+    - protocol: HTTP
+      port: 803
+      targetPort: 80
+    - protocol: HTTP
+      port: 443
+      targetPort: 443
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+data:
+  config.yaml: |
+    key1: value1
+    key2: value2
+    nested:
+      key3: value3
+      key4: value4
+      deeper:
+        key5: value5
+        key6: value6
+        deeper:
+            key5: value5
+            key6: value6
+            evenDeeper:
+              array:
+                - item1
+                - item7
+                - item3
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: app-secret
+type: Opaque
+data:
+  username: YWRtaW4=  # base64 encoded  23123
+  password: cGFzc3dvcmQ=  # base64 encoded
+
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: my-app-pv
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: manual
+  hostPath:
+    path: /mnt/data
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: my-app-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: manual
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-app-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+    - host: my-app.example.com
+      http:
+        paths:
+          - path: /\/
+            pathType: Prefix
+            backend:
+              service:
+                name: my-app-service
+                port:
+                  number: 80
+          - path: /secure
+            pathType: Prefix
+            backend:
+              service:
+                name: my-app-service
+                port:
+                  number: 443
